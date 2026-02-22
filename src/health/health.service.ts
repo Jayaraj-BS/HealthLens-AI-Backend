@@ -85,7 +85,7 @@ Exercise Days per week: ${data.exercise}
             return { error: 'Invalid or empty lab report text' };
         }
 
-        // 🔒 Safety: limit input size to prevent excessive token usage
+        // Limit token usage
         const reportText = data.report.substring(0, 3000);
 
         const prompt = `
@@ -127,15 +127,16 @@ ${reportText}
         const raw = await this.llmService.generateResponse(prompt);
 
         try {
+
             const parsed = JSON.parse(raw);
 
-            // 🔎 Count abnormal markers
-            const abnormalCount = parsed.markers.filter(
-                (m: any) => m.status === 'High' || m.status === 'Low'
+            const markers = Array.isArray(parsed.markers) ? parsed.markers : [];
+
+            const abnormalCount = markers.filter(
+                (m: any) => m?.status === 'High' || m?.status === 'Low'
             ).length;
 
-            // 🚦 Determine severity level
-            let severity = 'Low';
+            let severity: 'Low' | 'Moderate' | 'High' = 'Low';
 
             if (abnormalCount >= 3) {
                 severity = 'High';
@@ -144,7 +145,10 @@ ${reportText}
             }
 
             return {
-                ...parsed,
+                overallAssessment: parsed.overallAssessment ?? '',
+                markers,
+                doctorQuestions: parsed.doctorQuestions ?? [],
+                disclaimer: parsed.disclaimer ?? '',
                 abnormalCount,
                 severity
             };
